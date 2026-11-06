@@ -1,7 +1,7 @@
 # Netlify site for the registrations dashboard.
 #
-# Set the site's "Base directory" to dashboard-site in the Netlify UI (this file
-# lives there); every path below is relative to it.
+# This repo IS the site: leave "Base directory" empty in the Netlify UI; every
+# path below is relative to the repo root.
 #
 #   public/                      the dashboard page, served as static files
 #   netlify/functions/report.mjs /api/reports/<name> — reads ONE allow-listed
@@ -12,6 +12,11 @@
   publish = "public"
   # No build step: the page is pre-built by sync_page.py and committed.
   command = "echo 'static site — nothing to build'"
+
+[build.environment]
+  # Same Node major as local (.nvmrc). Node 25+ removed buffer.SlowBuffer, which a
+  # dependency of netlify-cli still uses, so newer Node breaks `netlify dev`.
+  NODE_VERSION = "22"
 
 [functions]
   directory = "netlify/functions"

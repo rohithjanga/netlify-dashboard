@@ -1,0 +1,99 @@
+1. In the Netlify UI (simplest)
+1. Open your site in https://app.netlify.com.
+2. Go to the Deploys tab.
+3. Click Trigger deploy, then Deploy site. Newer Netlify screens say "project" instead of "site", for example Deploy project.
+4. Wait until the new deploy shows Published, usually under a minute for this site since there's no build step.
+
+2. Push a commit
+
+Any push to the branch the site deploys from (normally main) triggers a deploy, so if you're about to push a change anyway, that covers it.
+
+3. A build hook (good for scripts)
+1. Go to Site configuration → Build & deploy → Continuous deployment → Build hooks → Add build hook. Name it, for example, redeploy, and pick the branch.
+2. Netlify gives you a URL. Calling it starts a deploy:
+curl -X POST -d '{}' https://api.netlify.com/build_hooks/<hook-id>
+
+   Treat that URL as a secret, since anyone who has it can trigger deploys.
+
+4. Netlify CLI
+cd dashboard-site
+npx netlify-cli login          # once
+npx netlify-cli link           # once, choose your site
+npx netlify-cli api createSiteBuild --data '{"site_id":"<site-id>"}'
+netlify deploy --prod also works, but it uploads your local files rather than rebuilding from GitHub, so I'd use the UI or a build hook for this site.
+
+
+
+
+
+-------------------------------
+
+
+
+1. Run the whole site locally
+
+cd ~/Documents/Isha/CodeRepository/data-analysis-scripts/dashboard-site
+npm install                 # once: installs the S3 client and netlify-cli
+cp .env.example .env        # once: fill in the values (git-ignored, never committed)
+npm test                    # function tests, S3 stubbed: no network, no cost
+npx netlify dev             # serves everything at http://localhost:8888
+
+- .env needs the same six variables as Netlify: DASHBOARD_S3_BUCKET, DASHBOARD_S3_REGION,
+  DASHBOARD_S3_ACCESS_KEY_ID, DASHBOARD_S3_SECRET_ACCESS_KEY, DASHBOARD_USER and
+  DASHBOARD_PASSWORD. Use the read-only key, so local runs behave exactly like production.
+- netlify dev runs the page, /api/reports/* and the password check just as Netlify will. The first run downloads Deno, which the edge function needs; that's automatic.
+- Don't run netlify login or netlify link for local testing, and don't use netlify deploy. Those talk to your Netlify account; netlify dev alone doesn't.
+
+2. Check that every report can be read from S3
+
+With netlify dev running, in a second terminal:
+
+for r in ieo-dashboard app-dashboard dash-programs dash-meditators \
+         dash-future-meditators dash-visits dash-msr; do
+  curl -s -u "$DASHBOARD_USER:$DASHBOARD_PASSWORD" -o /tmp/$r.json \
+       -w "$r  HTTP %{http_code}  %{size_download} bytes\n" \
+       http://localhost:8888/api/reports/$r
+done
+
+What the results mean:
+
+┌────────────────────────────┬───────────────────────────────────────────────────────────┐
+│          You see           │                          Meaning                          │
+├────────────────────────────┼───────────────────────────────────────────────────────────┤
+│ 200 with a size            │ Report is in S3 and readable with the read-only key       │
+├────────────────────────────┼───────────────────────────────────────────────────────────┤
+│ 404 … not been published   │ File missing in S3: upload it (README step 2) or wait for │
+│                            │  the nightly run                                          │
+├────────────────────────────┼───────────────────────────────────────────────────────────┤
+│ 502 … cannot read          │ The IAM policy doesn't cover that key                     │
+├────────────────────────────┼───────────────────────────────────────────────────────────┤
+│ 500 missing environment    │ Fix .env                                                  │
+│ variable                   │                                                           │
+├────────────────────────────┼───────────────────────────────────────────────────────────┤
+│ 401                        │ Wrong user or password in the curl command                │
+└────────────────────────────┴───────────────────────────────────────────────────────────┘
+
+Then open http://localhost:8888, log in, and click through every tab. Each program tab's first card should say "Source: warehouse · as of …".
+
+Only the program tabs read from S3 today. IEO still uses its embedded data, and the other tabs the hand export, so a passing check proves the files are reachable, not that every tab uses them yet.
+
+3. What this costs
+
+Service: Netlify
+Local testing: Nothing
+Notes: netlify dev runs entirely on your machine. Plan usage comes from deploys and from
+visitors to the hosted site, so test locally and deploy only when it's ready.
+────────────────────────────────────────
+Service: AWS S3
+Local testing: Pennies at most
+Notes: Each page load reads one file per converted tab, and the check above reads 7. S3
+charges about $0.0004 per 1,000 reads, plus data out of AWS (all seven files are about 6
+MB). AWS's monthly free data-transfer allowance covers this many times over, so expect $0.00
+ in practice. Check your AWS bill under S3 after the first week to confirm.
+
+To keep Netlify usage low once deployed:
+- Push only when local testing passes; every push to the production branch is a deploy.
+- Turn off Deploy Previews for pull requests if you don't need them: Site configuration → Build & deploy → Continuous deployment.
+- The page fetches reports only for the tab system it uses, and responses aren't cached on purpose, so each visit costs one function call per converted report. That's small, but it's why a password matters: it keeps strangers from using up your allowance.
+
+If you want to test with no S3 calls at all, I can add an optional local mode in which the function reads the JSON files from a folder on your machine. It would only switch on when a variable you set in .env is present, so it could never activate on Netlify. Want that?

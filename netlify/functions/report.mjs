@@ -18,17 +18,20 @@ import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 
 // Report name (the part after /api/reports/) -> S3 key. An allow-list, not a
 // prefix: adding a report is a reviewed one-line change here.
-//   reports/v1/latest/*        written by the nightly export on ishadp
-//   dashboards/registrations/* uploaded by hand until those reports join the nightly
-export const REPORTS = {
-  "ieo-dashboard":          "reports/v1/latest/ieo-dashboard.json",
-  "app-dashboard":          "reports/v1/latest/app-dashboard.json",
-  "dash-programs":          "dashboards/registrations/dash-programs.json",
-  "dash-meditators":        "dashboards/registrations/dash-meditators.json",
-  "dash-future-meditators": "dashboards/registrations/dash-future-meditators.json",
-  "dash-visits":            "dashboards/registrations/dash-visits.json",
-  "dash-msr":               "dashboards/registrations/dash-msr.json",
-};
+// Every page report lives under dashboards/registrations/, uploaded by
+// data-analysis-scripts/FullAutomation/publish_dashboard_reports.sh (generated from
+// knowledge/warehouse/exports/dataAnalyticsAutomation/). The read-only IAM key needs
+// s3:GetObject on that prefix only.
+const PREFIX = "dashboards/registrations/";
+export const REPORTS = Object.fromEntries([
+  "ieo-dashboard",
+  "dash-programs",
+  "app-dashboard",
+  "dash-meditators",
+  "dash-future-meditators",
+  "dash-visits",
+  "dash-msr",
+].map((name) => [name, `${PREFIX}${name}.json`]));
 
 function env(name) {
   // Netlify.env exists on Netlify; process.env covers `netlify dev` and tests.

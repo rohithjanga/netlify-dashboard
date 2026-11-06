@@ -11,11 +11,11 @@ For the hosted site we want the second path, so this script:
        window.DASHBOARD_REPORT_URLS = { "dash-programs-data": "/api/reports/dash-programs", ... }
      which this site's report function serves from S3.
 
-Blocks the loader does not know yet (tabs still on the hand export, and the IEO
-tab's adapter block) are left as they are, so those tabs keep working unchanged.
+Any other non-empty JSON block (embedded data the loader does not know) makes the
+script refuse: no tab on the hosted site may carry embedded data.
 
-Usage (from dashboard-site/):
-  python3 sync_page.py ../../regitstrationNumbersHtmlTest/index-automation.html
+Usage (from the netlify-dashboard repo root):
+  python3 sync_page.py ../regitstrationNumbersHtmlTest/index-automation.html
 then commit public/index.html; Netlify redeploys on push.
 """
 import re
@@ -49,6 +49,17 @@ def main() -> int:
             print(f'page must contain exactly one #{block} block')
             return 1
         html = pat.sub(lambda mm: mm.group(1) + '{}' + mm.group(3), html)
+
+    # No tab may carry embedded data: everything the site shows comes from S3.
+    # Refuse a page with any other non-empty JSON block (e.g. a leftover hand export).
+    embedded = [(m.group(1), len(m.group(2).strip()))
+                for m in re.finditer(r'<script id="([A-Za-z0-9_-]+)" type="application/json">(.*?)</script>', html, re.S)
+                if m.group(2).strip() not in ('', '{}')]
+    if embedded:
+        print('refusing: the page still embeds data in ' +
+              ', '.join(f'#{b} ({n:,} chars)' for b, n in embedded) +
+              ' — every tab must read its report from S3')
+        return 1
 
     urls = ',\n'.join(f'    "{b}": "{REPORT_FUNCTION}{b[:-len("-data")]}"' for b in blocks)
     inject = ('<script>\n'
