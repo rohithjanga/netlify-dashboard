@@ -1,0 +1,32 @@
+# Netlify site for the registrations dashboard.
+#
+# Set the site's "Base directory" to dashboard-site in the Netlify UI (this file
+# lives there); every path below is relative to it.
+#
+#   public/                      the dashboard page, served as static files
+#   netlify/functions/report.mjs /api/reports/<name> — reads ONE allow-listed
+#                                JSON object from S3 with credentials that only
+#                                Netlify holds; the browser never sees them
+#   netlify/edge-functions/      password-protects every path, data included
+[build]
+  publish = "public"
+  # No build step: the page is pre-built by sync_page.py and committed.
+  command = "echo 'static site — nothing to build'"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# The page is large (hand-exported tabs are still embedded) and changes only when
+# sync_page.py is re-run; the report data itself is fetched fresh, never cached.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Cache-Control = "no-store"
