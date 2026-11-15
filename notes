@@ -97,3 +97,16 @@ To keep Netlify usage low once deployed:
 - The page fetches reports only for the tab system it uses, and responses aren't cached on purpose, so each visit costs one function call per converted report. That's small, but it's why a password matters: it keeps strangers from using up your allowance.
 
 If you want to test with no S3 calls at all, I can add an optional local mode in which the function reads the JSON files from a folder on your machine. It would only switch on when a variable you set in .env is present, so it could never activate on Netlify. Want that?
+
+
+
+-------------
+Here is how to refresh reports :
+
+cd ~/Documents/Isha/CodeRepository/data-analysis-scripts
+export DASHBOARD_S3_BUCKET=ishadp-727158409574-us-east-1-an
+
+FullAutomation/publish_dashboard_reports.sh            # generate fresh JSON + show what would be uploaded
+FullAutomation/publish_dashboard_reports.sh --upload   # generate + upload for real
+# upload files you already have, without regenerating:
+FullAutomation/publish_dashboard_reports.sh --upload --skip-export FullAutomation/reports/s3_upload_2026-11-06
