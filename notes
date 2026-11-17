@@ -110,3 +110,9 @@ FullAutomation/publish_dashboard_reports.sh            # generate fresh JSON + s
 FullAutomation/publish_dashboard_reports.sh --upload   # generate + upload for real
 # upload files you already have, without regenerating:
 FullAutomation/publish_dashboard_reports.sh --upload --skip-export FullAutomation/reports/s3_upload_2026-11-06
+
+
+
+------
+
+
