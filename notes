@@ -32,7 +32,7 @@ netlify deploy --prod also works, but it uploads your local files rather than re
 
 1. Run the whole site locally
 
-cd ~/Documents/Isha/CodeRepository/data-analysis-scripts/dashboard-site
+cd ~/Documents/Isha/CodeRepository/netlify-dashboard
 npm install                 # once: installs the S3 client and netlify-cli
 cp .env.example .env        # once: fill in the values (git-ignored, never committed)
 npm test                    # function tests, S3 stubbed: no network, no cost
@@ -46,7 +46,7 @@ npx netlify dev             # serves everything at http://localhost:8888
 
 2. Check that every report can be read from S3
 
-With netlify dev running, in a second terminal:
+With netlify d
 
 for r in ieo-dashboard app-dashboard dash-programs dash-meditators \
          dash-future-meditators dash-visits dash-msr; do

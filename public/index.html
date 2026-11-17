@@ -169,6 +169,93 @@
   .theme-toggle[data-mode="dark"] .icon-sun { display: block; }
   .theme-toggle[data-mode="light"] .icon-moon { display: block; }
 
+  /* ---------- Report navigation (burger + side panel) ----------
+     Wide screens: the panel stays open beside the dashboard while you switch reports.
+     Narrow screens: it opens over the page and closes after a report is chosen. */
+  .masthead-left { display: flex; align-items: flex-start; gap: 14px; }
+  .nav-toggle {
+    appearance: none; cursor: pointer; flex-shrink: 0;
+    background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px;
+    width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+    color: var(--ink-secondary); transition: color .15s ease, border-color .15s ease;
+  }
+  .nav-toggle:hover, .nav-toggle[aria-expanded="true"] { color: var(--ink); border-color: var(--baseline); }
+  .nav-toggle svg { width: 20px; height: 20px; }
+  .side-nav {
+    position: fixed; top: 0; left: 0; bottom: 0; width: 280px; box-sizing: border-box;
+    background: var(--surface); border-right: 1px solid var(--hairline);
+    padding: 18px 12px 40px; overflow-y: auto; z-index: 40;
+    transform: translateX(-100%); visibility: hidden;
+    transition: transform .2s ease, visibility .2s;
+  }
+  body.nav-open .side-nav { transform: none; visibility: visible; }
+  .side-nav-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 6px 14px; margin-bottom: 8px; border-bottom: 1px solid var(--hairline);
+  }
+  .side-nav-title {
+    font-family: "Archivo", sans-serif; font-weight: 700; font-size: 12px;
+    letter-spacing: 0.11em; text-transform: uppercase; color: var(--accent); margin: 0;
+  }
+  .side-nav-close {
+    appearance: none; background: none; border: none; cursor: pointer; color: var(--ink-muted);
+    font-size: 22px; line-height: 1; padding: 2px 6px; border-radius: 6px;
+  }
+  .side-nav-close:hover { color: var(--ink); }
+  .nav-search { position: relative; margin: 0 2px 10px; }
+  .nav-search input {
+    width: 100%; box-sizing: border-box; font: inherit; font-size: 14px;
+    padding: 8px 30px 8px 32px; border-radius: 8px;
+    border: 1px solid var(--hairline); background: var(--ground); color: var(--ink);
+  }
+  .nav-search input::placeholder { color: var(--ink-muted); }
+  .nav-search input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+  .nav-search svg { position: absolute; left: 10px; top: 50%; width: 15px; height: 15px; transform: translateY(-50%); color: var(--ink-muted); pointer-events: none; }
+  .nav-search-clear {
+    position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+    appearance: none; background: none; border: none; cursor: pointer;
+    color: var(--ink-muted); font-size: 18px; line-height: 1; padding: 2px 6px; border-radius: 6px;
+  }
+  .nav-search-clear:hover { color: var(--ink); }
+  .nav-search-clear[hidden], .nav-empty[hidden], .side-nav [hidden] { display: none; }
+  .nav-empty { font-size: 13.5px; color: var(--ink-muted); padding: 8px 10px; margin: 0; }
+  .nav-group-btn, .side-nav .tab {
+    appearance: none; background: none; border: none; cursor: pointer; width: 100%;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    text-align: left; border-radius: 8px; color: var(--ink-secondary);
+  }
+  .nav-group-btn {
+    font-family: "Archivo", sans-serif; font-weight: 700; font-size: 14.5px;
+    padding: 10px 10px; margin-top: 2px; color: var(--ink);
+  }
+  .nav-group-btn:hover, .side-nav .tab:hover { background: var(--surface-alt); }
+  .nav-chevron { width: 14px; height: 14px; color: var(--ink-muted); transition: transform .15s ease; flex-shrink: 0; }
+  .nav-group-btn[aria-expanded="true"] .nav-chevron { transform: rotate(90deg); }
+  .nav-sublist { list-style: none; margin: 2px 0 6px; padding: 0; }
+  .nav-sublist[hidden] { display: none; }
+  .side-nav .tab {
+    font-family: "Public Sans", sans-serif; font-weight: 500; font-size: 14px;
+    padding: 8px 10px 8px 28px; margin: 1px 0; border-bottom: none; white-space: normal;
+  }
+  .side-nav .tab.nav-direct { font-family: "Archivo", sans-serif; font-weight: 700; font-size: 14.5px; padding-left: 10px; color: var(--ink); }
+  .side-nav .tab[aria-selected="true"] {
+    background: var(--surface-alt); color: var(--ink); font-weight: 700;
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .nav-backdrop { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.35); z-index: 30; }
+  .crumb {
+    font-family: "Archivo", sans-serif; font-weight: 700; font-size: 13px; color: var(--ink-muted);
+    margin: 0 0 22px; padding-bottom: 14px; border-bottom: 1px solid var(--hairline);
+  }
+  .crumb strong { color: var(--ink); font-size: 15px; }
+  .crumb .sep { margin: 0 8px; color: var(--baseline); }
+  @media (min-width: 1200px) {
+    body.nav-open { padding-left: 280px; }
+  }
+  @media (max-width: 1199px) {
+    body.nav-open .nav-backdrop { display: block; }
+  }
+
   /* ---------- Tabs ---------- */
   .tabs {
     display: flex;
@@ -824,9 +911,18 @@
 
 <div class="page">
   <div class="masthead">
-    <div>
-      <p class="eyebrow">Program Operations</p>
-      <h1>Current Program Registrations</h1>
+    <div class="masthead-left">
+      <button type="button" class="nav-toggle" id="navToggle" aria-label="Show reports" aria-expanded="false" aria-controls="sideNav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <line x1="4" y1="6.5" x2="20" y2="6.5"></line>
+          <line x1="4" y1="12" x2="20" y2="12"></line>
+          <line x1="4" y1="17.5" x2="20" y2="17.5"></line>
+        </svg>
+      </button>
+      <div>
+        <p class="eyebrow">Program Operations</p>
+        <h1>Current Program Registrations</h1>
+      </div>
     </div>
     <div class="masthead-right">
       <div class="as-of">Warehouse data generated<br><strong id="asOfDate">—</strong></div>
@@ -849,10 +945,27 @@
     </div>
   </div>
 
-  <div class="tabs" role="tablist" id="tabs"></div>
+  <p class="crumb" id="crumb" aria-live="polite"></p>
 
   <div id="content"></div>
 </div>
+
+<nav class="side-nav" id="sideNav" aria-label="Reports">
+  <div class="side-nav-head">
+    <p class="side-nav-title">Reports</p>
+    <button type="button" class="side-nav-close" id="navClose" aria-label="Close reports">&times;</button>
+  </div>
+  <div class="nav-search" role="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="6.5"></circle><line x1="16" y1="16" x2="20.5" y2="20.5"></line>
+    </svg>
+    <input type="search" id="navSearch" placeholder="Search reports" aria-label="Search reports" autocomplete="off" spellcheck="false">
+    <button type="button" class="nav-search-clear" id="navSearchClear" aria-label="Clear search" hidden>&times;</button>
+  </div>
+  <p class="nav-empty" id="navEmpty" hidden>No reports match.</p>
+  <div id="tabs"></div>
+</nav>
+<div class="nav-backdrop" id="navBackdrop"></div>
 
 <!-- Warehouse reports, one block per report, EMPTY by design: no data is embedded in this page.
      The page fetches window.DASHBOARD_REPORT_URLS[<block id>] (set by the hosting site — on Netlify,
@@ -1637,20 +1750,81 @@
     };
   }
 
-  // ---------- Tabs ----------
-  var tabsEl = document.getElementById("tabs");
-  TAB_DEFS.forEach(function (t) {
-    var btn = document.createElement("button");
-    btn.className = "tab";
-    btn.type = "button";
-    btn.setAttribute("role", "tab");
-    btn.setAttribute("aria-selected", t.key === state.tab ? "true" : "false");
-    btn.dataset.key = t.key;
+  // ---------- Report navigation ----------
+  // A burger (top left) opens a side panel listing the reports in groups. Clicking a group
+  // opens its list; clicking a report shows it on the right. A group with one report of the
+  // same name links to it directly. Any tab not listed here is added under "Other", so a new
+  // tab can never become unreachable.
+  var NAV_GROUPS = [
+    { label: "IE", keys: ["ieo", "ie_city", "ie_iii", "iycla_ie", "msr"] },
+    { label: "Hatha", keys: ["hatha_iii", "hatha_city"] },
+    { label: "Advanced program", keys: ["advanced"], direct: true },
+    { label: "Centers", keys: ["iiis", "iycla"] },
+    { label: "Free sessions", keys: ["free_program", "gathering_satsang"] },
+    { label: "Meditators", keys: ["meditators", "non_meditators"] },
+    { label: "Website Traffic", keys: ["website_ie", "website_ieo"] },
+    { label: "Apps", keys: ["app_sadhguru", "app_mom"] },
+    { label: "Other", keys: ["ishanga"] }
+  ];
+  (function () {
+    var listed = {};
+    NAV_GROUPS.forEach(function (g) { g.keys.forEach(function (k) { listed[k] = true; }); });
+    var other = NAV_GROUPS.filter(function (g) { return g.label === "Other"; })[0];
+    TAB_DEFS.forEach(function (t) { if (!listed[t.key]) other.keys.push(t.key); });
+    NAV_GROUPS.forEach(function (g) {
+      g.keys = g.keys.filter(function (k) { return TAB_DEFS.some(function (t) { return t.key === k; }); });
+    });
+  })();
+  function tabDefFor(key) { return TAB_DEFS.filter(function (t) { return t.key === key; })[0]; }
+  function groupOf(key) { return NAV_GROUPS.filter(function (g) { return g.keys.indexOf(key) !== -1; })[0]; }
 
+  var tabsEl = document.getElementById("tabs");
+  var NAV_STORE = "nav-open";
+  var wideScreen = window.matchMedia ? window.matchMedia("(min-width: 1200px)") : { matches: true };
+
+  function setNavOpen(open, remember) {
+    document.body.classList.toggle("nav-open", open);
+    var toggle = document.getElementById("navToggle");
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    toggle.setAttribute("aria-label", open ? "Hide reports" : "Show reports");
+    // Remember the choice on wide screens only; on narrow screens the panel is transient.
+    if (remember && wideScreen.matches) {
+      try { window.localStorage.setItem(NAV_STORE, open ? "1" : "0"); } catch (e) {}
+    }
+  }
+
+  // Opening a tab: the same sort reset the old tab bar did, then render.
+  function selectTab(key) {
+    var t = tabDefFor(key);
+    if (!t) return;
+    state.tab = t.key;
+    state.sortKey = t.defaultSortKey || "days_until_start";
+    state.sortDir = t.defaultSortDir || "asc";
+    state.sortKey2 = t.defaultSortKey2 || "start";
+    state.sortDir2 = t.defaultSortDir2 || "desc";
+    state.sortKey3 = t.defaultSortKey3 || "total";
+    state.sortDir3 = t.defaultSortDir3 || "desc";
+    state.sortKey4 = t.defaultSortKey4 || "start";
+    state.sortDir4 = t.defaultSortDir4 || "desc";
+    state.sortKey5 = t.defaultSortKey5 || "total";
+    state.sortDir5 = t.defaultSortDir5 || "desc";
+    state.sortKey6 = t.defaultSortKey6 || "total";
+    state.sortDir6 = t.defaultSortDir6 || "desc";
+    // Bookmarkable: the address ends in #<tab key>.
+    try { window.history.replaceState(null, "", "#" + t.key); } catch (e) {}
+    if (!wideScreen.matches) setNavOpen(false, false);
+    render();
+  }
+
+  function navItem(t, direct) {
+    var btn = document.createElement("button");
+    btn.className = "tab" + (direct ? " nav-direct" : "");
+    btn.type = "button";
+    btn.dataset.key = t.key;
+    btn.setAttribute("aria-selected", t.key === state.tab ? "true" : "false");
     var labelSpan = document.createElement("span");
     labelSpan.textContent = t.label;
     btn.appendChild(labelSpan);
-
     if (t.type === "programs") {
       var countSpan = document.createElement("span");
       countSpan.className = "count";
@@ -1658,30 +1832,166 @@
       countSpan.textContent = programsTabCount(t);
       btn.appendChild(countSpan);
     }
+    btn.addEventListener("click", function () { selectTab(t.key); });
+    return btn;
+  }
 
-    btn.addEventListener("click", function () {
+  // Handles kept for the search filter: one entry per group (or direct link) with its items.
+  var NAV_ENTRIES = [];
+  NAV_GROUPS.forEach(function (g, gi) {
+    if (!g.keys.length) return;
+    if (g.direct && g.keys.length === 1) {
+      var directBtn = navItem(tabDefFor(g.keys[0]), true);
+      tabsEl.appendChild(directBtn);
+      NAV_ENTRIES.push({ group: g, direct: true, items: [{ key: g.keys[0], label: tabDefFor(g.keys[0]).label, el: directBtn }] });
+      return;
+    }
+    var listId = "nav-group-" + gi;
+    var groupBtn = document.createElement("button");
+    groupBtn.type = "button";
+    groupBtn.className = "nav-group-btn";
+    groupBtn.setAttribute("aria-expanded", "false");
+    groupBtn.setAttribute("aria-controls", listId);
+    groupBtn.dataset.group = g.label;
+    var gLabel = document.createElement("span");
+    gLabel.textContent = g.label;
+    groupBtn.appendChild(gLabel);
+    groupBtn.insertAdjacentHTML("beforeend",
+      '<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"></polyline></svg>');
+    var list = document.createElement("ul");
+    list.className = "nav-sublist";
+    list.id = listId;
+    list.hidden = true;
+    var entry = { group: g, direct: false, btn: groupBtn, list: list, items: [] };
+    g.keys.forEach(function (k) {
+      var li = document.createElement("li");
+      var itemBtn = navItem(tabDefFor(k), false);
+      li.appendChild(itemBtn);
+      list.appendChild(li);
+      entry.items.push({ key: k, label: tabDefFor(k).label, el: li, btn: itemBtn });
+    });
+    NAV_ENTRIES.push(entry);
+    groupBtn.addEventListener("click", function () {
+      var open = groupBtn.getAttribute("aria-expanded") !== "true";
+      groupBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      list.hidden = !open;
+    });
+    tabsEl.appendChild(groupBtn);
+    tabsEl.appendChild(list);
+  });
+
+  // ---- Search: filter the menu by report or group name as you type ----
+  // A group whose name matches shows all its reports; otherwise only matching reports show,
+  // with their group expanded. Enter opens the first match; Esc clears the box.
+  var navSearch = document.getElementById("navSearch");
+  var navSearchClear = document.getElementById("navSearchClear");
+  var navEmpty = document.getElementById("navEmpty");
+  var navExpandedBeforeSearch = null;     // group expand/collapse state to restore afterwards
+
+  function navMatches(query) {
+    var q = query.trim().toLowerCase();
+    var out = [];
+    NAV_ENTRIES.forEach(function (e) {
+      var groupHit = !e.direct && e.group.label.toLowerCase().indexOf(q) !== -1;
+      e.items.forEach(function (it) {
+        if (!q || groupHit || it.label.toLowerCase().indexOf(q) !== -1) out.push(it.key);
+      });
+    });
+    return out;
+  }
+
+  function filterNav(query) {
+    var q = query.trim();
+    var keep = {};
+    navMatches(q).forEach(function (k) { keep[k] = true; });
+    if (q && navExpandedBeforeSearch === null) {
+      navExpandedBeforeSearch = NAV_ENTRIES.map(function (e) { return e.btn ? e.btn.getAttribute("aria-expanded") === "true" : null; });
+    }
+    var anyShown = false;
+    NAV_ENTRIES.forEach(function (e, i) {
+      var shown = 0;
+      e.items.forEach(function (it) { var on = !!keep[it.key]; it.el.hidden = !on; if (on) shown++; });
+      if (e.direct) { if (shown) anyShown = true; return; }
+      e.btn.hidden = shown === 0;
+      if (shown) anyShown = true;
+      var expand = q ? shown > 0 : !!(navExpandedBeforeSearch && navExpandedBeforeSearch[i]);
+      if (q || navExpandedBeforeSearch) {
+        e.btn.setAttribute("aria-expanded", expand ? "true" : "false");
+        e.list.hidden = !expand;
+      }
+    });
+    if (!q) navExpandedBeforeSearch = null;
+    navEmpty.hidden = anyShown;
+    navSearchClear.hidden = !q;
+  }
+
+  navSearch.addEventListener("input", function () { filterNav(navSearch.value); });
+  navSearch.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+      var first = navMatches(navSearch.value)[0];
+      if (navSearch.value.trim() && first) { e.preventDefault(); selectTab(first); }
+    } else if (e.key === "Escape" && navSearch.value) {
+      e.stopPropagation();
+      navSearch.value = "";
+      filterNav("");
+    }
+  });
+  navSearchClear.addEventListener("click", function () {
+    navSearch.value = "";
+    filterNav("");
+    navSearch.focus();
+  });
+
+  document.getElementById("navToggle").addEventListener("click", function () {
+    setNavOpen(!document.body.classList.contains("nav-open"), true);
+  });
+  document.getElementById("navClose").addEventListener("click", function () { setNavOpen(false, true); });
+  document.getElementById("navBackdrop").addEventListener("click", function () { setNavOpen(false, false); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && document.body.classList.contains("nav-open") && !wideScreen.matches) setNavOpen(false, false);
+  });
+
+  // Start: a #<tab> address opens that tab. On wide screens the panel starts OPEN, unless
+  // the viewer closed it there last time (remembered); on narrow screens it starts closed.
+  (function () {
+    var fromHash = (window.location.hash || "").replace(/^#/, "");
+    if (fromHash && tabDefFor(fromHash)) {
+      var t = tabDefFor(fromHash);
       state.tab = t.key;
       state.sortKey = t.defaultSortKey || "days_until_start";
       state.sortDir = t.defaultSortDir || "asc";
-      state.sortKey2 = t.defaultSortKey2 || "start";
-      state.sortDir2 = t.defaultSortDir2 || "desc";
-      state.sortKey3 = t.defaultSortKey3 || "total";
-      state.sortDir3 = t.defaultSortDir3 || "desc";
-      state.sortKey4 = t.defaultSortKey4 || "start";
-      state.sortDir4 = t.defaultSortDir4 || "desc";
-      state.sortKey5 = t.defaultSortKey5 || "total";
-      state.sortDir5 = t.defaultSortDir5 || "desc";
-      state.sortKey6 = t.defaultSortKey6 || "total";
-      state.sortDir6 = t.defaultSortDir6 || "desc";
-      render();
-    });
-    tabsEl.appendChild(btn);
-  });
+    }
+    var stored = null;
+    try { stored = window.localStorage.getItem(NAV_STORE); } catch (e) {}
+    setNavOpen(wideScreen.matches && stored !== "0", false);
+  })();
 
   function setActiveTab() {
     Array.prototype.forEach.call(tabsEl.querySelectorAll(".tab"), function (btn) {
-      btn.setAttribute("aria-selected", btn.dataset.key === state.tab ? "true" : "false");
+      var on = btn.dataset.key === state.tab;
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+      if (on) btn.setAttribute("aria-current", "page"); else btn.removeAttribute("aria-current");
     });
+    // Keep the open report's group expanded, and show "Group › Report" above the dashboard.
+    var g = groupOf(state.tab), t = tabDefFor(state.tab);
+    if (g) {
+      Array.prototype.forEach.call(tabsEl.querySelectorAll(".nav-group-btn"), function (btn) {
+        if (btn.dataset.group === g.label && btn.getAttribute("aria-expanded") !== "true") btn.click();
+      });
+    }
+    var crumb = document.getElementById("crumb");
+    crumb.textContent = "";
+    if (g && !(g.direct && g.keys.length === 1)) {
+      crumb.appendChild(document.createTextNode(g.label));
+      var sep = document.createElement("span");
+      sep.className = "sep";
+      sep.textContent = "›";
+      crumb.appendChild(sep);
+    }
+    var cur = document.createElement("strong");
+    cur.textContent = t ? t.label : "";
+    crumb.appendChild(cur);
     // Program counts come from a report that may arrive after the tab bar was built.
     updateAsOf();
     Array.prototype.forEach.call(tabsEl.querySelectorAll("[data-count-for]"), function (span) {
