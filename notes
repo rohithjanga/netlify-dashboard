@@ -104,7 +104,6 @@ If you want to test with no S3 calls at all, I can add an optional local mode in
 Here is how to refresh reports :
 
 cd ~/Documents/Isha/CodeRepository/data-analysis-scripts
-export DASHBOARD_S3_BUCKET=ishadp-727158409574-us-east-1-an
 
 FullAutomation/publish_dashboard_reports.sh            # generate fresh JSON + show what would be uploaded
 FullAutomation/publish_dashboard_reports.sh --upload   # generate + upload for real
