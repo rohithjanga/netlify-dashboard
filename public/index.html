@@ -978,6 +978,7 @@
 <script id="dash-future-meditators-data" type="application/json">{}</script>
 <script id="dash-visits-data" type="application/json">{}</script>
 <script id="dash-msr-data" type="application/json">{}</script>
+<script id="dash-margazhi-data" type="application/json">{}</script>
 <script>
   // Hosted on Netlify: tabs fetch their warehouse report through this site's
   // /api/reports function (S3, read-only, server-side credentials). Written by sync_page.py.
@@ -988,7 +989,8 @@
     "dash-meditators-data": "/api/reports/dash-meditators",
     "dash-future-meditators-data": "/api/reports/dash-future-meditators",
     "dash-visits-data": "/api/reports/dash-visits",
-    "dash-msr-data": "/api/reports/dash-msr"
+    "dash-msr-data": "/api/reports/dash-msr",
+    "dash-margazhi-data": "/api/reports/dash-margazhi"
   };
 </script>
 <script>
@@ -1021,6 +1023,7 @@
     { key: "ishanga", label: "Ishanga 7% Online", showCenter: false, includeEvergreen: true, type: "programs" },
     { key: "meditators", label: "Meditators", type: "meditators", defaultSortKey: "total", defaultSortDir: "desc", defaultSortKey2: "start", defaultSortDir2: "desc" },
     { key: "non_meditators", label: "Future Meditators", type: "non_meditators", defaultSortKey: "leads", defaultSortDir: "desc", defaultSortKey2: "start", defaultSortDir2: "desc" },
+    { key: "margazhi", label: "Margazhi", type: "margazhi" },
     { key: "msr", label: "MSR analytics", type: "msr", defaultSortKey: "ft_p", defaultSortDir: "desc", defaultSortKey2: "stage", defaultSortDir2: "asc", defaultSortKey3: "people", defaultSortDir3: "desc", defaultSortKey4: "total_since", defaultSortDir4: "desc" }
   ];
 
@@ -1149,7 +1152,8 @@
     meditators: "dash-meditators-data",
     future_meditators: "dash-future-meditators-data",
     visits: "dash-visits-data",
-    msr: "dash-msr-data"
+    msr: "dash-msr-data",
+    margazhi: "dash-margazhi-data"
   };
   var REPORTS = {}, REPORT_ERRORS = {}, REPORTS_PENDING = {};
   Object.keys(REPORT_BLOCKS).forEach(function (key) {
@@ -1764,7 +1768,7 @@
     { label: "Meditators", keys: ["meditators", "non_meditators"] },
     { label: "Website Traffic", keys: ["website_ie", "website_ieo"] },
     { label: "Apps", keys: ["app_sadhguru", "app_mom"] },
-    { label: "Other", keys: ["ishanga"] }
+    { label: "Other", keys: ["ishanga", "margazhi"] }
   ];
   (function () {
     var listed = {};
@@ -5435,6 +5439,290 @@
     content.appendChild(foot);
   }
 
+  // ---------- Margazhi tab ----------
+  // From the warehouse `dash_margazhi` report: summary (one row per season), pace
+  // (cumulative people by weeks before the season's first start, host All/LA/iiis)
+  // and geo (people by season x host x home region x city, cells under 5 merged).
+  // PEOPLE only. "Same point" = the same number of days before the season's first
+  // start as today. The summary and suggestions below are rules over those numbers,
+  // recomputed on every load, so they change as registrations come in.
+  function renderMargazhiTab(content, tabDef) {
+    if (!REPORTS.margazhi) { content.appendChild(reportStatusCard("margazhi", "Margazhi data")); return; }
+    var R = REPORTS.margazhi;
+    content.appendChild(reportSourceCard(R, "Source: warehouse · Margazhi Sadhana (in person: iiis and Isha Yoga Center LA)",
+      "people, not enrollments · 2023–2024 kept only completed registrations, so they read closer to attendance · cells under 5 merged into “(other)”"));
+
+    var S = (R.summary || []).slice().sort(function (a, b) { return a.season - b.season; });
+    var cur = S.filter(function (s) { return s.isCurrent; })[0];
+    if (!cur) { content.appendChild(reportStatusCard("margazhi", "Margazhi data")); return; }
+    var prev = S.filter(function (s) { return s.season < cur.season; }).sort(function (a, b) { return b.season - a.season; });
+    var last = prev[0] || null;
+    var peak = prev.slice().sort(function (a, b) { return b.peopleSamePoint - a.peopleSamePoint; })[0] || null;
+    var DAY = 86400000;
+    var daysToStart = Math.round((new Date(cur.firstStart) - new Date(cur.samePointDate)) / DAY);
+    var pct = function (a, b) { return b ? Math.round((a / b) * 100) : 0; };
+    var signed = function (n) { return (n > 0 ? "+" : "") + fmtInt(n); };
+    var dash = function (v) { return v === null || v === undefined ? "–" : fmtInt(v); };
+    var fmtDay = function (iso) { return new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }); };
+    var strong = function (el, txt) { var s = document.createElement("strong"); s.textContent = txt; el.appendChild(s); };
+    var text = function (el, txt) { el.appendChild(document.createTextNode(txt)); };
+
+    // pace lookup: P[season][host][weeksOut] = cumulative people (null = still in the future)
+    var P = {};
+    (R.pace || []).forEach(function (r) {
+      ((P[r.season] = P[r.season] || {})[r.host] = P[r.season][r.host] || {})[r.weeksOut] = r.people;
+    });
+    var paceAt = function (season, host, w) { var h = (P[season] || {})[host] || {}; return h[w] === undefined ? null : h[w]; };
+    var curWeeks = Object.keys((P[cur.season] || {}).All || {}).map(Number)
+      .filter(function (w) { return paceAt(cur.season, "All", w) !== null; }).sort(function (a, b) { return a - b; });
+    var w0 = curWeeks.length ? curWeeks[0] : null;               // latest completed weekly checkpoint
+    var weekGain = function (season, host) {
+      if (w0 === null) return null;
+      var a = paceAt(season, host, w0), b = paceAt(season, host, w0 + 1);
+      return a === null || b === null ? null : a - b;
+    };
+
+    // geo: G[host][region][season] = { sp, fin }; cities kept apart for the city table
+    var G = {}, C = {};
+    var other = ((R.provenance.labels || {}).geo || {}).city || {};
+    var hiddenCity = (other.collapsed || []).concat(other.unresolved || []);
+    (R.geo || []).forEach(function (r) {
+      var g = ((G[r.host] = G[r.host] || {})[r.region] = G[r.host][r.region] || {});
+      var c = g[r.season] = g[r.season] || { sp: 0, fin: 0 };
+      c.sp += r.peopleSamePoint; c.fin += r.people;
+      if (hiddenCity.indexOf(r.city) === -1) {
+        var key = r.host + "|" + r.region + "|" + r.city;
+        var cc = C[key] = C[key] || { host: r.host, region: r.region, city: r.city, s: {} };
+        cc.s[r.season] = { sp: r.peopleSamePoint, fin: r.people };
+      }
+    });
+    var regionRows = [];
+    Object.keys(G).forEach(function (host) {
+      Object.keys(G[host]).forEach(function (region) {
+        var g = G[host][region];
+        var now = g[cur.season] ? g[cur.season].sp : null;
+        var lastSp = last && g[last.season] ? g[last.season].sp : null;
+        var gap = lastSp === null ? null : (now || 0) - lastSp;
+        regionRows.push({ host: host, region: region, g: g, now: now, lastSp: lastSp, gap: gap });
+      });
+    });
+    var unspecified = ((R.provenance.labels || {}).geo || {}).region || {};
+    var isRealRegion = function (r) { return (unspecified.unresolved || []).indexOf(r) === -1; };
+    // "Needs a push" = under-represented today against where this host's people came
+    // from in the last two completed seasons: expected = today's host total x the
+    // region's share of those seasons' finals. Robust to a weak or strong year overall.
+    var mixSeasons = prev.filter(function (p) { return p.people > 0; }).slice(0, 2);
+    var mixLabel = mixSeasons.map(function (p) { return p.season; }).sort().join("–");
+    var hostNow = { LA: cur.laSamePoint, iiis: cur.iiisSamePoint };
+    var hostKey = { LA: "laPeople", iiis: "iiisPeople" };
+    regionRows.forEach(function (r) {
+      var fin = 0, tot = 0;
+      mixSeasons.forEach(function (p) { fin += r.g[p.season] ? r.g[p.season].fin : 0; tot += p[hostKey[r.host]] || 0; });
+      r.expected = tot ? hostNow[r.host] * fin / tot : null;
+      r.short = r.expected === null ? null : (r.now || 0) - r.expected;
+      // a hidden (under 5) current count can be up to 4, so only flag it when even 4 is short
+      r.push = isRealRegion(r.region) && r.expected !== null && (r.now === null ? r.expected - 4 >= 3 : r.short <= -3);
+    });
+    var lagging = regionRows.filter(function (r) { return r.push; }).sort(function (a, b) { return a.short - b.short; });
+
+    // ---- Today's summary ----
+    var items = [];
+    items.push({ dot: "is-soon", build: function (row) {
+      strong(row, fmtInt(cur.peopleSamePoint) + " people");
+      text(row, " registered for Margazhi " + cur.season + " so far (LA " + fmtInt(cur.laSamePoint) + ", iiis " + fmtInt(cur.iiisSamePoint) +
+        "), " + daysToStart + " days before the first start on " + fmtDay(cur.firstStart) + ".");
+    }});
+    prev.forEach(function (p) {
+      if (!p.peopleSamePoint) return;
+      var d = cur.peopleSamePoint - p.peopleSamePoint;
+      items.push({ dot: d >= 0 ? "is-up" : "is-down", build: function (row) {
+        text(row, "Versus " + p.season + " at the same point (" + fmtDay(p.samePointDate) + "): ");
+        strong(row, signed(d) + " people");
+        text(row, " (" + fmtInt(p.peopleSamePoint) + " then; LA " + signed(cur.laSamePoint - p.laSamePoint) +
+          ", iiis " + signed(cur.iiisSamePoint - p.iiisSamePoint) + "). " + p.season + " finished with " + fmtInt(p.people) + ".");
+      }});
+    });
+    var shares = prev.filter(function (p) { return p.peopleSamePoint > 0 && p.people > 0; })
+      .map(function (p) { return { season: p.season, share: p.peopleSamePoint / p.people }; });
+    if (shares.length && cur.peopleSamePoint > 0) {
+      var proj = shares.map(function (s) { return Math.round(cur.peopleSamePoint / s.share); });
+      items.push({ dot: "is-new", build: function (row) {
+        text(row, "If " + cur.season + " fills like earlier seasons, it would finish around ");
+        strong(row, fmtInt(Math.min.apply(null, proj)) + "–" + fmtInt(Math.max.apply(null, proj)) + " people");
+        text(row, " (" + shares.map(function (s) { return s.season + ": " + Math.round(s.share * 100) + "% were in by now"; }).join(", ") +
+          "). A projection from past curves, not a forecast.");
+      }});
+    }
+    var g0 = weekGain(cur.season, "All");
+    if (g0 !== null) {
+      var asOf = (R.pace || []).filter(function (r) { return r.season === cur.season && r.host === "All" && r.weeksOut === w0; })[0];
+      items.push({ dot: "is-soon", build: function (row) {
+        strong(row, fmtInt(g0) + " people");
+        text(row, " registered in the week to " + (asOf ? fmtDay(asOf.asOf) : "the last checkpoint") +
+          prev.filter(function (p) { return weekGain(p.season, "All") !== null; }).map(function (p, i) {
+            return (i ? "; " : " — the same week was ") + fmtInt(weekGain(p.season, "All")) + " in " + p.season;
+          }).join("") + ".");
+      }});
+    }
+    if (lagging.length) {
+      items.push({ dot: "is-down", build: function (row) {
+        text(row, "Under-represented against the " + mixLabel + " mix: ");
+        lagging.slice(0, 3).forEach(function (r, i) {
+          if (i) text(row, ", ");
+          strong(row, r.region + " (" + r.host + ") " + (r.now === null ? "under 5" : fmtInt(r.now)) + " vs ~" + Math.round(r.expected) + " expected");
+        });
+        text(row, ".");
+      }});
+    }
+    content.appendChild(buildHighlightsCard("Today's summary · recomputed from this morning's data", "No registrations yet.", items));
+
+    // ---- Stat row ----
+    content.appendChild(buildStatRow([
+      { label: "People registered", value: fmtInt(cur.peopleSamePoint), delta: last ? cur.peopleSamePoint - last.peopleSamePoint : null,
+        deltaVsLabel: last ? last.season + " same point" : "", sub: daysToStart + " days to first start · " + fmtDay(cur.firstStart) },
+      { label: "Isha Yoga Center LA", value: fmtInt(cur.laSamePoint), delta: last ? cur.laSamePoint - last.laSamePoint : null,
+        deltaVsLabel: last ? String(last.season) : "", sub: fmtInt(cur.laSessions) + " sessions" + (last ? " (" + last.laSessions + " in " + last.season + ")" : "") },
+      { label: "iiis", value: fmtInt(cur.iiisSamePoint), delta: last ? cur.iiisSamePoint - last.iiisSamePoint : null,
+        deltaVsLabel: last ? String(last.season) : "", sub: fmtInt(cur.iiisSessions) + " options" + (last ? " (" + last.iiisSessions + " in " + last.season + ")" : "") },
+      { label: "Returning participants", value: fmtInt(cur.returningSamePoint), sub: pct(cur.returningSamePoint, cur.peopleSamePoint) + "% did an earlier in-person Margazhi" }
+    ]));
+
+    // ---- Campaign suggestions ----
+    var tips = [];
+    if (last && last.people) {
+      var lastAtW0 = w0 !== null ? paceAt(last.season, "All", w0) : null;
+      var lateShare = lastAtW0 !== null ? 100 - pct(lastAtW0, last.people) : 100 - pct(last.peopleSamePoint, last.people);
+      var upcoming = (R.pace || []).filter(function (r) { return r.season === cur.season && r.host === "All" && r.people === null && r.weeksOut >= 0; })
+        .sort(function (a, b) { return b.weeksOut - a.weeksOut; }).map(function (r) { return fmtDay(r.asOf); });
+      tips.push({ cls: "is-soon", tag: "Timing", headline: lateShare + "% still to come",
+        headlineSub: "of " + last.season + "'s people registered after this point",
+        body: "Most registrations arrive in the final weeks. Send a reminder each week" +
+          (upcoming.length ? " — " + upcoming.join(", ") : "") + " — and a last call in the week before " + fmtDay(cur.firstStart) + "." });
+    }
+    [["LA", "laSamePoint", "laSessions", "Isha Yoga Center LA"], ["iiis", "iiisSamePoint", "iiisSessions", "iiis"]].forEach(function (h) {
+      if (!last) return;
+      var d = cur[h[1]] - last[h[1]];
+      var vsPeak = peak ? cur[h[1]] - peak[h[1]] : null;
+      var body = h[0] === "LA"
+        ? "Most LA registrants live in US West. " + (cur[h[2]] < last[h[2]] ? "There are " + cur[h[2]] + " sessions this season against " + last[h[2]] + " last season, and LA regulars book several days — promote the full series, not single dates, to Los Angeles-area meditators." : "Promote the series of Sundays to Los Angeles-area meditators; regulars book several days.")
+        : "iiis draws from every region. Promote the options around the holiday dates" + (lagging.filter(function (r) { return r.host === "iiis"; }).length ? ", starting with the under-represented " + lagging.filter(function (r) { return r.host === "iiis"; }).slice(0, 2).map(function (r) { return r.region; }).join(" and ") : "") + ".";
+      tips.push({ cls: d < 0 ? "is-down" : "is-up", tag: h[3], headline: signed(d) + " people vs " + last.season,
+        headlineSub: vsPeak !== null && peak.season !== last.season ? signed(vsPeak) + " vs " + peak.season : "", body: body });
+    });
+    if (last) {
+      tips.push({ cls: "is-new", tag: "Past participants", headline: fmtInt(cur.returningSamePoint) + " have come back",
+        headlineSub: "out of " + fmtInt(last.people) + " people in " + last.season + (prev[1] ? " and " + fmtInt(prev[1].people) + " in " + prev[1].season : ""),
+        body: "Returning participants are " + pct(cur.returningSamePoint, cur.peopleSamePoint) + "% of this season's registrants. Personal outreach (centre volunteers, WhatsApp groups) to past in-person participants who have not registered yet is the most direct lever." });
+    }
+    if (lagging.length) {
+      tips.push({ cls: "is-down", tag: "Regions needing a push", headline: lagging.slice(0, 2).map(function (r) { return r.region; }).join(" · "),
+        headlineSub: "fewer registrants than their " + mixLabel + " share",
+        body: lagging.slice(0, 4).map(function (r) { return r.region + " for " + r.host + ": " + (r.now === null ? "under 5" : fmtInt(r.now)) + " now vs ~" + Math.round(r.expected) + " expected"; }).join("; ") +
+          ". Target these regions' centre mailing lists and satsang groups first." });
+    }
+    if (tips.length) content.appendChild(buildInsightsCard("Campaign suggestions", "Rules over today's numbers — a starting point for the team, not a plan", tips));
+
+    // ---- Season comparison ----
+    var seasonCard = document.createElement("div");
+    seasonCard.className = "card";
+    seasonCard.appendChild(buildCardHead("Season comparison", "People registered by the same point before the start, and final totals"));
+    var seasonsDesc = S.slice().reverse();
+    seasonCard.appendChild(buildGenericTable(seasonsDesc, null, "asc", function () {}, [
+      { key: "season", label: "Season", sortable: false, render: function (td, r) { td.textContent = r.season + (r.isCurrent ? " (now)" : ""); } },
+      { key: "sp", label: "Same point", sortable: false, render: function (td, r) { td.textContent = fmtDay(r.samePointDate) + ", " + r.season; } },
+      { key: "a", label: "People by then", align: "right", sortable: false, render: function (td, r) { td.textContent = fmtInt(r.peopleSamePoint); } },
+      { key: "b", label: "LA by then", align: "right", sortable: false, render: function (td, r) { td.textContent = fmtInt(r.laSamePoint); } },
+      { key: "c", label: "iiis by then", align: "right", sortable: false, render: function (td, r) { td.textContent = fmtInt(r.iiisSamePoint); } },
+      { key: "d", label: "Final people", align: "right", sortable: false, render: function (td, r) { td.textContent = r.isCurrent ? "in progress" : fmtInt(r.people); } },
+      { key: "e", label: "Final LA", align: "right", sortable: false, render: function (td, r) { td.textContent = r.isCurrent ? "–" : fmtInt(r.laPeople); } },
+      { key: "f", label: "Final iiis", align: "right", sortable: false, render: function (td, r) { td.textContent = r.isCurrent ? "–" : fmtInt(r.iiisPeople); } },
+      { key: "g", label: "LA sessions", align: "right", sortable: false, render: function (td, r) { td.textContent = fmtInt(r.laSessions); } },
+      { key: "h", label: "iiis options", align: "right", sortable: false, render: function (td, r) { td.textContent = fmtInt(r.iiisSessions); } },
+      { key: "i", label: "Returning", align: "right", sortable: false, render: function (td, r) { td.textContent = fmtInt(r.returningPeople); } }
+    ]));
+    var sNote = document.createElement("p");
+    sNote.className = "stat-sub";
+    sNote.textContent = "Final people counts each person once even if they registered at both LA and iiis. 2023 registration opened only 23 days before the start, so it has nothing at the same point.";
+    seasonCard.appendChild(sNote);
+    content.appendChild(seasonCard);
+
+    // ---- Pace ----
+    var paceCard = document.createElement("div");
+    paceCard.className = "card";
+    paceCard.appendChild(buildCardHead("Registration pace", "Cumulative people registered by N weeks before each season's first start"));
+    var weeks = [];
+    for (var w = 10; w >= -2; w--) weeks.push(w);
+    var wLabel = function (w) { return w > 0 ? w + " wk before" : (w === 0 ? "Start" : (-w) + " wk after"); };
+    var paceCols = [{ key: "w", label: "Weeks", sortable: false, render: function (td, r) { td.textContent = wLabel(r.w); } }];
+    S.forEach(function (s) {
+      paceCols.push({ key: "s" + s.season, label: String(s.season), align: "right", sortable: false, render: function (td, r) { td.textContent = dash(paceAt(s.season, "All", r.w)); } });
+    });
+    paceCard.appendChild(buildGenericTable(weeks.map(function (w) { return { w: w }; }), null, "asc", function () {}, paceCols));
+    var hostCols = [{ key: "w", label: "Weeks", sortable: false, render: function (td, r) { td.textContent = wLabel(r.w); } }];
+    ["LA", "iiis"].forEach(function (h) {
+      S.filter(function (s) { return s.season >= cur.season - 2; }).forEach(function (s) {
+        hostCols.push({ key: h + s.season, label: h + " " + s.season, align: "right", sortable: false, render: function (td, r) { td.textContent = dash(paceAt(s.season, h, r.w)); } });
+      });
+    });
+    paceCard.appendChild(buildSectionHeading("LA and iiis separately", "Same weeks, by host"));
+    paceCard.appendChild(buildGenericTable(weeks.map(function (w) { return { w: w }; }), null, "asc", function () {}, hostCols));
+    content.appendChild(paceCard);
+
+    // ---- Regions ----
+    var regCard = document.createElement("div");
+    regCard.className = "card";
+    regCard.appendChild(buildCardHead("Where registrants live, by region", "People by home region · now vs the same point and final of earlier seasons"));
+    var cmp = prev.slice(0, 2);
+    var regCols = [
+      { key: "host", label: "Host", sortable: false, render: function (td, r) { td.textContent = r.host; } },
+      { key: "region", label: "Home region", sortable: false, render: function (td, r) { td.textContent = r.region; } },
+      { key: "now", label: cur.season + " now", align: "right", sortable: false, render: function (td, r) { td.textContent = dash(r.now); } }
+    ];
+    cmp.forEach(function (p) {
+      regCols.push({ key: "sp" + p.season, label: p.season + " same point", align: "right", sortable: false, render: function (td, r) { td.textContent = r.g[p.season] ? fmtInt(r.g[p.season].sp) : "–"; } });
+      regCols.push({ key: "f" + p.season, label: p.season + " final", align: "right", sortable: false, render: function (td, r) { td.textContent = r.g[p.season] ? fmtInt(r.g[p.season].fin) : "–"; } });
+    });
+    regCols.push({ key: "exp", label: "Expected now (" + mixLabel + " mix)", align: "right", sortable: false, render: function (td, r) {
+      td.textContent = r.expected === null ? "" : "~" + Math.round(r.expected);
+    }});
+    regCols.push({ key: "flag", label: "", sortable: false, render: function (td, r) { td.textContent = r.push ? "needs push" : ""; } });
+    regionRows.sort(function (a, b) { return a.host === b.host ? ((b.now || 0) - (a.now || 0)) : (a.host < b.host ? -1 : 1); });
+    regCard.appendChild(buildGenericTable(regionRows, null, "asc", function () {}, regCols));
+    var rNote = document.createElement("p");
+    rNote.className = "stat-sub";
+    rNote.textContent = "Home region = the person's satsang centre region, not where they attend. – = none, or fewer than 5 people (hidden for privacy). " +
+      "Expected now = today's registrants at that host × the region's share of the " + mixLabel + " finals; 'needs push' = at least 3 short. " +
+      "(Unspecified) = no satsang centre on the record. " + fmtInt(((R.provenance.suppressedBelowK || {}).geo || {}).measureTotal || 0) +
+      " people across all seasons sit in cells under 5 and are not shown.";
+    regCard.appendChild(rNote);
+    content.appendChild(regCard);
+
+    // ---- Cities ----
+    var cityRows = Object.keys(C).map(function (k) { return C[k]; });
+    var cityCard = document.createElement("div");
+    cityCard.className = "card";
+    cityCard.appendChild(buildCardHead("Cities with 5 or more registrants", "Final people per season (same point in brackets) · smaller cities are merged into their region above"));
+    cityRows.sort(function (a, b) {
+      var fa = 0, fb = 0;
+      Object.keys(a.s).forEach(function (s) { fa += a.s[s].fin; });
+      Object.keys(b.s).forEach(function (s) { fb += b.s[s].fin; });
+      return fb - fa;
+    });
+    var cityCols = [
+      { key: "city", label: "City", sortable: false, render: function (td, r) { td.textContent = r.city; } },
+      { key: "region", label: "Region", sortable: false, render: function (td, r) { td.textContent = r.region; } },
+      { key: "host", label: "Host", sortable: false, render: function (td, r) { td.textContent = r.host; } }
+    ];
+    S.forEach(function (s) {
+      cityCols.push({ key: "c" + s.season, label: String(s.season), align: "right", sortable: false, render: function (td, r) {
+        var v = r.s[s.season];
+        td.textContent = !v ? "–" : (s.isCurrent ? fmtInt(v.sp) : fmtInt(v.fin) + " (" + fmtInt(v.sp) + ")");
+      }});
+    });
+    cityCard.appendChild(buildGenericTable(cityRows, null, "asc", function () {}, cityCols, "No city has 5 or more registrants yet."));
+    content.appendChild(cityCard);
+  }
+
   function render() {
     setActiveTab();
     var tabDef = TAB_DEFS.filter(function (t) { return t.key === state.tab; })[0];
@@ -5453,6 +5741,8 @@
       renderNonMeditatorsTab(content, tabDef);
     } else if (tabDef.type === "msr") {
       renderMsrTab(content, tabDef);
+    } else if (tabDef.type === "margazhi") {
+      renderMargazhiTab(content, tabDef);
     } else {
       renderProgramsTab(content, tabDef);
     }

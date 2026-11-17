@@ -31,6 +31,7 @@ export const REPORTS = Object.fromEntries([
   "dash-future-meditators",
   "dash-visits",
   "dash-msr",
+  "dash-margazhi",
 ].map((name) => [name, `${PREFIX}${name}.json`]));
 
 function env(name) {

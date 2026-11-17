@@ -36,6 +36,7 @@ Every report is `s3://<bucket>/dashboards/registrations/<name>.json`, uploaded b
 | Meditators | `dash-meditators` | `dash_meditators.yml` |
 | Future Meditators | `dash-future-meditators` | `dash_future_meditators.yml` |
 | MSR analytics | `dash-msr` | `dash_msr.yml` |
+| Margazhi (Other group) | `dash-margazhi` | `dash_margazhi.yml` |
 | Website - IE, Website - IEO | — | none yet: Google Analytics is not in the warehouse; the tabs show "coming soon" |
 
 Until a report is uploaded, its tab shows "… could not be loaded — has not been published
@@ -72,7 +73,7 @@ S3 write key `S3_ARCHIVE_*`):
 ```bash
 cd ~/Documents/Isha/CodeRepository/data-analysis-scripts
 export DASHBOARD_S3_BUCKET=<bucket>
-FullAutomation/publish_dashboard_reports.sh            # generate all 7 reports + DRY RUN of the upload
+FullAutomation/publish_dashboard_reports.sh            # generate all 8 reports + DRY RUN of the upload
 FullAutomation/publish_dashboard_reports.sh --upload   # generate + upload for real
 ```
 

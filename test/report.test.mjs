@@ -58,7 +58,7 @@ test("access denied -> 502 that does not leak the bucket or key id", async () =>
 });
 
 test("every report is served from dashboards/registrations/ (the only prefix the IAM key can read)", () => {
-  assert.equal(Object.keys(REPORTS).length, 7);
+  assert.equal(Object.keys(REPORTS).length, 8);
   for (const [name, key] of Object.entries(REPORTS)) {
     assert.equal(key, `dashboards/registrations/${name}.json`, name);
   }
